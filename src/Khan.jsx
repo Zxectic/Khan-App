@@ -172,8 +172,15 @@ export default function Khan() {
           const merged = { ...DEFAULT_STATE, ...loaded };
           const processed = processDayChange(merged);
           setState(processed);
+          // If day changed, persist the updated state (decay, resets, etc.)
+          if (processed !== merged) {
+            await window.storage.set(`khan:state:${currentUser}`, JSON.stringify(processed));
+            await window.storage.set(`khan:profile:${currentUser}`, JSON.stringify({ username: currentUser, xp: processed.xp, rank: rankFor(processed.xp).name, streak: processed.streak }), true);
+          }
         } else {
-          setState({ ...DEFAULT_STATE, dailyTaskDate: todayStr() });
+          const fresh = { ...DEFAULT_STATE, dailyTaskDate: todayStr() };
+          setState(fresh);
+          await window.storage.set(`khan:state:${currentUser}`, JSON.stringify(fresh));
         }
       } catch {
         setState({ ...DEFAULT_STATE, dailyTaskDate: todayStr() });
@@ -293,8 +300,9 @@ export default function Khan() {
       const s = { ...state };
       delete s._pendingDecayModal;
       setState(s);
+      save(s);
     }
-  }, [state]);
+  }, [state, save]);
 
   // ── XP MANAGEMENT ──────────────────────────────────────────────────────────
   function spawnPopup(amount, negative = false) {
